@@ -10,9 +10,9 @@
 
 extern "C" 
 {
-	#include "lua.h"
-	#include "lualib.h"
-	#include "lauxlib.h"
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
 };
 
 #include "lua_tinker.h"
@@ -63,7 +63,6 @@ static int le_s64(lua_State *L)
 void lua_tinker::init_s64(lua_State *L)
 {
 	const char* name = "__s64";
-	lua_pushstring(L, name);
 	lua_newtable(L);
 
 	lua_pushstring(L, "__name");
@@ -86,7 +85,7 @@ void lua_tinker::init_s64(lua_State *L)
 	lua_pushcclosure(L, le_s64, 0);
 	lua_rawset(L, -3);	
 
-	lua_settable(L, LUA_GLOBALSINDEX);
+	lua_setglobal(L, name);
 }
 
 /*---------------------------------------------------------------------------*/ 
@@ -125,7 +124,6 @@ static int le_u64(lua_State *L)
 void lua_tinker::init_u64(lua_State *L)
 {
 	const char* name = "__u64";
-	lua_pushstring(L, name);
 	lua_newtable(L);
 
 	lua_pushstring(L, "__name");
@@ -148,7 +146,7 @@ void lua_tinker::init_u64(lua_State *L)
 	lua_pushcclosure(L, le_u64, 0);
 	lua_rawset(L, -3);	
 
-	lua_settable(L, LUA_GLOBALSINDEX);
+	lua_setglobal(L, name);
 }
 
 /*---------------------------------------------------------------------------*/ 
@@ -159,7 +157,7 @@ void lua_tinker::dofile(lua_State *L, const char *filename)
 	lua_pushcclosure(L, on_error, 0);
 	int errfunc = lua_gettop(L);
 
-    if(luaL_loadfile(L, filename) == 0)
+	if(luaL_loadfile(L, filename) == 0)
 	{
 		lua_pcall(L, 0, 1, errfunc);
 	}
@@ -184,7 +182,7 @@ void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
 	lua_pushcclosure(L, on_error, 0);
 	int errfunc = lua_gettop(L);
 
-    if(luaL_loadbuffer(L, buff, len, "lua_tinker::dobuffer()") == 0)
+	if(luaL_loadbuffer(L, buff, len, "lua_tinker::dobuffer()") == 0)
 	{
 		lua_pcall(L, 0, 1, errfunc);
 	}
@@ -202,8 +200,8 @@ void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
 /*---------------------------------------------------------------------------*/ 
 static void call_stack(lua_State* L, int n)
 {
-    lua_Debug ar;
-    if(lua_getstack(L, n, &ar) == 1)
+	lua_Debug ar;
+	if(lua_getstack(L, n, &ar) == 1)
 	{
 		lua_getinfo(L, "nSlu", &ar);
 
@@ -247,8 +245,7 @@ void lua_tinker::print_error(lua_State *L, const char* fmt, ...)
 	vsprintf_s(text, fmt, args);
 	va_end(args);
 
-	lua_pushstring(L, "_ALERT");
-	lua_gettable(L, LUA_GLOBALSINDEX);
+	lua_getglobal(L, "_ALERT");
 	if(lua_isfunction(L, -1))
 	{
 		lua_pushstring(L, text);
@@ -300,7 +297,7 @@ void lua_tinker::enum_stack(lua_State *L)
 		}
 	}
 }
- 
+
 /*---------------------------------------------------------------------------*/ 
 /* read                                                                      */ 
 /*---------------------------------------------------------------------------*/ 
@@ -505,16 +502,14 @@ template<>
 void lua_tinker::push(lua_State *L, long long ret)			
 { 
 	*(long long*)lua_newuserdata(L, sizeof(long long)) = ret;
-	lua_pushstring(L, "__s64");
-	lua_gettable(L, LUA_GLOBALSINDEX);
+	lua_getglobal(L, "__s64");
 	lua_setmetatable(L, -2);
 }
 template<>
 void lua_tinker::push(lua_State *L, unsigned long long ret)
 {
 	*(unsigned long long*)lua_newuserdata(L, sizeof(unsigned long long)) = ret;
-	lua_pushstring(L, "__u64");
-	lua_gettable(L, LUA_GLOBALSINDEX);
+	lua_getglobal(L, "__u64");
 	lua_setmetatable(L, -2);
 }
 
@@ -615,8 +610,7 @@ int lua_tinker::meta_set(lua_State *L)
 /*---------------------------------------------------------------------------*/ 
 void lua_tinker::push_meta(lua_State *L, const char* name)
 {
-	lua_pushstring(L, name);
-	lua_gettable(L, LUA_GLOBALSINDEX);
+	lua_getglobal(L, name);
 }
 
 /*---------------------------------------------------------------------------*/ 
@@ -684,7 +678,7 @@ bool lua_tinker::table_obj::validate()
 	}
 	else
 	{
-        return false;
+		return false;
 	}
 }
 
@@ -702,17 +696,20 @@ lua_tinker::table::table(lua_State* L)
 
 lua_tinker::table::table(lua_State* L, const char* name)
 {
-	lua_pushstring(L, name);
-	lua_gettable(L, LUA_GLOBALSINDEX);
+	lua_getglobal(L, name);
 
 	if(lua_istable(L, -1) == 0)
 	{
 		lua_pop(L, 1);
 
 		lua_newtable(L);
-		lua_pushstring(L, name);
-		lua_pushvalue(L, -2);
-		lua_settable(L, LUA_GLOBALSINDEX);
+		lua_pushvalue(L, -1);	// 这里还没弄明白为啥要从-2变成-1，5.2栈结构改了？
+		lua_setglobal(L, name);
+
+		//lua_newtable(L);
+		//lua_pushstring(L, name);
+		//lua_pushvalue(L, -2);
+		//lua_settable(L, LUA_GLOBALSINDEX);
 	}
 
 	m_obj = new table_obj(L, lua_gettop(L));

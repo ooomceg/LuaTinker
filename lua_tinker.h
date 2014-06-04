@@ -24,7 +24,7 @@ namespace lua_tinker
 	void	dofile(lua_State *L, const char *filename);
 	void	dostring(lua_State *L, const char* buff);
 	void	dobuffer(lua_State *L, const char* buff, size_t sz);
-	
+
 	// debug helpers
 	void	enum_stack(lua_State *L);
 	int		on_error(lua_State *L);
@@ -68,7 +68,7 @@ namespace lua_tinker
 
 	template<typename A>
 	struct class_type { typedef typename remove_const<typename base_type<A>::type>::type type; };
-	
+
 	template<typename A>
 	struct is_obj { static const bool value = true; };
 	template<> struct is_obj<char>					{ static const bool value = false; };
@@ -135,12 +135,12 @@ namespace lua_tinker
 		static T invoke(void* ptr)
 		{
 			return	if_<is_ptr<T>::value
-						,void2ptr<typename base_type<T>::type>
-						,typename if_<is_ref<T>::value
-							,void2ref<typename base_type<T>::type>
-							,void2val<typename base_type<T>::type>
-						>::type
-					>::type::invoke(ptr);
+				,void2ptr<typename base_type<T>::type>
+				,typename if_<is_ref<T>::value
+				,void2ref<typename base_type<T>::type>
+				,void2val<typename base_type<T>::type>
+				>::type
+			>::type::invoke(ptr);
 		}
 	};
 
@@ -175,9 +175,9 @@ namespace lua_tinker
 	T lua2type(lua_State *L, int index)
 	{
 		return	if_<is_enum<T>::value
-					,lua2enum<T>
-					,lua2object<T> 
-				>::type::invoke(L, index);
+			,lua2enum<T>
+			,lua2object<T> 
+		>::type::invoke(L, index);
 	}
 
 	template<typename T>
@@ -234,8 +234,8 @@ namespace lua_tinker
 			if_<is_ptr<T>::value
 				,ptr2lua<typename base_type<T>::type>
 				,typename if_<is_ref<T>::value
-					,ref2lua<typename base_type<T>::type>
-					,val2lua<typename base_type<T>::type>
+				,ref2lua<typename base_type<T>::type>
+				,val2lua<typename base_type<T>::type>
 				>::type
 			>::type::invoke(L, val);
 
@@ -285,7 +285,7 @@ namespace lua_tinker
 	// push a value to lua stack 
 	template<typename T>  
 	void push(lua_State *L, T ret)					{ type2lua<T>(L, ret); }
-	
+
 	template<>	void push(lua_State *L, char ret);
 	template<>	void push(lua_State *L, unsigned char ret);
 	template<>	void push(lua_State *L, short ret);
@@ -307,7 +307,7 @@ namespace lua_tinker
 	// pop a value from lua stack
 	template<typename T>  
 	T pop(lua_State *L) { T t = read<T>(L, -1); lua_pop(L, 1); return t; }
-	
+
 	template<>	void	pop(lua_State *L);
 	template<>	table	pop(lua_State *L);
 
@@ -684,26 +684,23 @@ namespace lua_tinker
 	template<typename F> 
 	void def(lua_State* L, const char* name, F func)
 	{ 
-		lua_pushstring(L, name);
 		lua_pushlightuserdata(L, (void*)func);
 		push_functor(L, func);
-		lua_settable(L, LUA_GLOBALSINDEX);
+		lua_setglobal(L, name);
 	}
 
 	// global variable
 	template<typename T>
 	void set(lua_State* L, const char* name, T object)
 	{
-		lua_pushstring(L, name);
 		push(L, object);
-		lua_settable(L, LUA_GLOBALSINDEX);
+		lua_setglobal(L, name);
 	}
 
 	template<typename T>
 	T get(lua_State* L, const char* name)
 	{
-		lua_pushstring(L, name);
-		lua_gettable(L, LUA_GLOBALSINDEX);
+		lua_getglobal(L, name);
 		return pop<T>(L);
 	}
 
@@ -720,8 +717,7 @@ namespace lua_tinker
 		lua_pushcclosure(L, on_error, 0);
 		int errfunc = lua_gettop(L);
 
-		lua_pushstring(L, name);
-		lua_gettable(L, LUA_GLOBALSINDEX);
+		lua_getglobal(L, name);
 
 		if(lua_isfunction(L,-1))
 		{
@@ -742,8 +738,7 @@ namespace lua_tinker
 		lua_pushcclosure(L, on_error, 0);
 		int errfunc = lua_gettop(L);
 
-		lua_pushstring(L, name);
-		lua_gettable(L, LUA_GLOBALSINDEX);
+		lua_getglobal(L, name);
 		if(lua_isfunction(L,-1))
 		{
 			push(L, arg);
@@ -764,8 +759,7 @@ namespace lua_tinker
 		lua_pushcclosure(L, on_error, 0);
 		int errfunc = lua_gettop(L);
 
-		lua_pushstring(L, name);
-		lua_gettable(L, LUA_GLOBALSINDEX);
+		lua_getglobal(L, name);
 		if(lua_isfunction(L,-1))
 		{
 			push(L, arg1);
@@ -787,8 +781,7 @@ namespace lua_tinker
 		lua_pushcclosure(L, on_error, 0);
 		int errfunc = lua_gettop(L);
 
-		lua_pushstring(L, name);
-		lua_gettable(L, LUA_GLOBALSINDEX);
+		lua_getglobal(L, name);
 		if(lua_isfunction(L,-1))
 		{
 			push(L, arg1);
@@ -816,7 +809,6 @@ namespace lua_tinker
 	{ 
 		class_name<T>::name(name);
 
-		lua_pushstring(L, name);
 		lua_newtable(L);
 
 		lua_pushstring(L, "__name");
@@ -835,7 +827,7 @@ namespace lua_tinker
 		lua_pushcclosure(L, destroyer<T>, 0);
 		lua_rawset(L, -3);
 
-		lua_settable(L, LUA_GLOBALSINDEX);
+		lua_setglobal(L, name);
 	}
 
 	// Tinker Class Inheritence
